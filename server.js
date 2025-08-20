@@ -21,13 +21,11 @@ app.use(cors());
 app.use(express.json());
 
 // Kết nối MongoDB
-mongoose.connect( process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('MongoDB connection error:', err));
-
+  
 // Load groups từ DB khi server start
 let groups = [];
 async function loadGroups() {
