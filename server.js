@@ -17,15 +17,24 @@ const io = new Server(server, {
   },
 });
 
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || 'https://chat-app-frontend-olive-psi.vercel.app',
+    methods: ['GET', 'POST'],
+  })
+);
 app.use(express.json());
 
+// Thêm route mặc định
+app.get('/', (req, res) => {
+  res.json({ status: 'Backend is running' });
+});
 // Kết nối MongoDB
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('MongoDB connection error:', err));
-  
+
 // Load groups từ DB khi server start
 let groups = [];
 async function loadGroups() {
