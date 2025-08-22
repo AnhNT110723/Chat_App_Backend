@@ -130,14 +130,13 @@ module.exports = (io, groups) => {
                         user: socket.username,
                         text: message,
                         isGroup: true,
+                        seenBy: [socket.username]
                     });
                     await msg.save();
 
                     io.to(room).emit('message', {
-                        room,
-                        user: socket.username,
-                        text: message,
-                        timestamp: msg.timestamp,
+                        ...msg.toObject(),
+                        timestamp,   
                         isNew: true
                     });
                 }
@@ -153,15 +152,12 @@ module.exports = (io, groups) => {
                     text: message,
                     timestamp,
                     isGroup: false,
+                    seenBy: [socket.username]
                 });
                 await msg.save();
 
                 const messagePayload = {
-                    room,
-                    user: socket.username,
-                    text: message,
-                    timestamp: msg.timestamp,
-                    isGroup: false,
+                    ...msg.toObject(),
                     isNew: true 
                 };
 
@@ -177,7 +173,43 @@ module.exports = (io, groups) => {
         socket.on('getMessageHistory', async ({ room, isGroup }) => {
             // ...
             const messages = await Message.find({ room, isGroup }).sort({ timestamp: 1 }).limit(50);
-            socket.emit('messageHistory', messages);
+            socket.emit('messageHistory', messages.map(msg => msg.toObject()));
+        });
+
+        // Mới: Sự kiện đánh dấu đã xem
+        socket.on('markAsSeen', async ({ room, isGroup }) => {
+            if (!socket.username) return;
+
+            // Tìm tất cả tin nhắn trong room chưa được user này xem (seenBy không chứa username)
+            const messagesToUpdate = await Message.find({
+                room,
+                isGroup,
+                seenBy: { $ne: socket.username }  // $ne: not equal
+            });
+
+            if (messagesToUpdate.length > 0) {
+                // Cập nhật bulk: Thêm username vào seenBy của tất cả tin nhắn chưa xem
+                await Message.updateMany(
+                    { _id: { $in: messagesToUpdate.map(m => m._id) } },
+                    { $addToSet: { seenBy: socket.username } }  // $addToSet để tránh duplicate
+                );
+
+                // Emit cập nhật seenBy đến tất cả thành viên trong room (trừ người vừa xem, vì họ đã biết)
+                const updatedMessages = await Message.find({ _id: { $in: messagesToUpdate.map(m => m._id) } });
+                const payload = updatedMessages.map(msg => ({ id: msg._id, seenBy: msg.seenBy }));
+
+                if (isGroup) {
+                    socket.to(room).emit('messageSeen', { room, updates: payload });
+                } else {
+                    // Chat 1-1: Tìm người kia và emit
+                    const [user1, user2] = room.split('-');
+                    const otherUser = user1 === socket.username ? user2 : user1;
+                    const otherSocket = users.find(u => u.username === otherUser);
+                    if (otherSocket) {
+                        io.to(otherSocket.id).emit('messageSeen', { room, updates: payload });
+                    }
+                }
+            }
         });
 
         // Sự kiện xóa nhóm mới

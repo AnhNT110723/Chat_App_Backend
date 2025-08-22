@@ -5,5 +5,6 @@ const messageSchema = new mongoose.Schema({
   text: String,
   timestamp: { type: Date, default: Date.now },
   isGroup: Boolean,
+  seenBy: [{ type: String }]
 });
 module.exports = mongoose.model('Message', messageSchema);
