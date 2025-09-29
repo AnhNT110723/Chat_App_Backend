@@ -18,6 +18,7 @@ The application supports features like automatic joining of group rooms, system 
 - **cors**: For handling cross-origin requests.
 
 ## Project Structure 📂
+```
 Chat_App_Backend/
 ├── config/             # Configuration files (e.g., database connection)
 ├── models/             # Mongoose models (e.g., User, Message, Group)
@@ -28,7 +29,7 @@ Chat_App_Backend/
 ├── package.json        # Project dependencies and scripts
 ├── server.js           # Main server entry point
 └── README.md           # This file
-
+```
 
 ## Features ✨
  
